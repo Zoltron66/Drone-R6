@@ -1,2 +1,2 @@
-# Rainbow-Six-Siege_Drone-IRL
-Rainbow Six Siege: Kitty Drone IRL
+# Drone R6
+Video game inspired 2 wheel Drone

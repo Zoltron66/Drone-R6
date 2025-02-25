@@ -1,8 +1,8 @@
-[submodule "lib/esp32-camera"]
-	path = lib/esp32-camera
-	url = https://github.com/espressif/esp32-camera.git
-	branch = master
 [submodule "components/esp32-camera"]
 	path = components/esp32-camera
 	url = https://github.com/espressif/esp32-camera.git
+	branch = master
+[submodule "components/ESP32_LED_STRIP"]
+	path = components/ESP32_LED_STRIP
+	url = https://github.com/Lucas-Bruder/ESP32_LED_STRIP.git
 	branch = master

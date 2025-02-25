@@ -8,7 +8,15 @@
 
 extern "C" {
 #include "esp_wifi.h"
+#include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+
+#include "esp_system.h"
+#include "nvs_flash.h"
+#include "driver/gpio.h"
+#include "led_strip.h"
+
+#include <stdio.h>
 }
 
 #define WIFI_SSID "Telekom-60C778"
@@ -23,6 +31,11 @@ void cleanup();
 
 extern "C" void app_main(void)
 {
+    cleanup();
+}
+
+
+void initialize() {
     DEBUG_PRINT("Starting test...");
 
 
@@ -77,7 +90,9 @@ extern "C" void app_main(void)
     while (true) {
         vTaskDelay(10000 / portTICK_PERIOD_MS);
     }
+}
 
+void process() {
     // DEBUG_PRINT("");
     // // Some process...
 
@@ -89,27 +104,46 @@ extern "C" void app_main(void)
     // wifiModulManager->~WiFiModulManager();
 
     // DEBUG_PRINT("End of test... [PASSED]");
-}
-
-
-void initialize() {
-    // Initialize the long term storage
-    // StorageManager* storageManager = StorageManager::getInstance();
-
-    // Initialize the Wi-Fi module
-    //WiFiModulManager* wifiModulManager = WiFiModulManager::getInstance();
-    // wifiModulManager->setSSID(storageManager->getSSID());
-    // wifiModulManager->setPassword(storageManager->getPassword());
-
-    // Initialize the Motor Manager
-    //MotorManager::getInstance();
-
-}
-
-void process() {
     
 }
+
+#define LED_STRIP_LENGTH 6U
+static struct led_color_t led_strip_buf_1[LED_STRIP_LENGTH];
+static struct led_color_t led_strip_buf_2[LED_STRIP_LENGTH];
+
+#define LED_STRIP_RMT_INTR_NUM 19
 
 void cleanup() {
-    
+    nvs_flash_init();
+
+    struct led_strip_t led_strip = {
+        .rgb_led_type = RGB_LED_TYPE_WS2812,
+        .led_strip_length = LED_STRIP_LENGTH,
+        .rmt_channel = RMT_CHANNEL_1,
+        .rmt_interrupt_num = LED_STRIP_RMT_INTR_NUM,
+        .gpio = GPIO_NUM_16,
+        .led_strip_buf_1 = led_strip_buf_1,
+        .led_strip_buf_2 = led_strip_buf_2
+    };
+    led_strip.access_semaphore = xSemaphoreCreateBinary();
+
+    bool led_init_ok = led_strip_init(&led_strip);
+    assert(led_init_ok);
+
+    struct led_color_t led_color = {
+        .red = 5,
+        .green = 0,
+        .blue = 0,
+    };
+
+    while (true) {
+        for (uint32_t index = 0; index < LED_STRIP_LENGTH; index++) {
+            led_strip_set_pixel_color(&led_strip, index, &led_color);
+        }
+        led_strip_show(&led_strip);
+
+        led_color.red += 5;
+        vTaskDelay(30 / portTICK_PERIOD_MS);
+    }
+
 }

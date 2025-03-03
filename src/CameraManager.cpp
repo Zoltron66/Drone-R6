@@ -13,13 +13,10 @@
 
 #include "CameraManager.h"
 
-extern "C" {
-#include "esp_camera.h"
-}
 
 // Init camera ----------------------------------------------------------
 CameraManager::CameraManager() {
-    DEBUG_PRINT("--- Init Camera called");
+    DEBUG_INIT_START("Camera");
     cameraConfig = {
         .pin_pwdn = CAMERA_PWDN,
         .pin_reset = CAMERA_RESET,
@@ -61,26 +58,35 @@ CameraManager::CameraManager() {
         ESP_ERROR_CHECK(err);
         return;
     }
-    DEBUG_PRINT("Camera inited ---");
+    DEBUG_INIT_END("Camera");
 }
 
 // Deinit camera --------------------------------------------------------
 CameraManager::~CameraManager() {
-    DEBUG_PRINT("--- Deinit Camera called");
+    DEBUG_DEINIT_START("Camera");
     esp_camera_deinit();
-    delete instance;
-    DEBUG_PRINT("Camera deinited ---");
-    
+    DEBUG_DEINIT_END("Camera");
 }
 
 // Singleton ------------------------------------------------------------
 CameraManager* CameraManager::instance = nullptr;
 
-CameraManager* CameraManager::getInstance() {
+void CameraManager::init() {
     if (instance == nullptr) {
         instance = new CameraManager();
+        return;
     }
-    return instance;
+    DEBUG_INIT_NO_NEED("Camera manager");
 }
+
+void CameraManager::deinit() {
+    if (instance) {
+        delete instance;
+        instance = nullptr;
+        return;
+    }
+    DEBUG_DEINIT_NO_NEED("Camera manager");
+}
+
 
 // DONE: CameraManager.cpp VERSION_ALPHA

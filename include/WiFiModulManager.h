@@ -13,19 +13,20 @@
 
 #pragma once
 
-#include "VersionControl.h"
-#include <iostream>
-extern "C" {
-// #include <inttypes.h>
+#include "DebugAndVersionControl.h"
 
+// C++
+#include <iostream>
+
+// C
+extern "C" {
 #include "esp_err.h"
-#include "esp_event.h"
 #include "esp_wifi.h"
 
 #include "nvs_flash.h"
 
 #include "freertos/FreeRTOS.h"
-// #include "freertos/event_groups.h"
+#include "freertos/task.h"
 }
 
 
@@ -42,9 +43,9 @@ enum SignalStrenght {
 
 enum NetworkStatus {
     DISCONNECTED,
-    TRYING_TO_CONNECT, // TODO: LED Animation for connecting comes in the beta version
+    TRYING_TO_CONNECT,
+    TRYING_TO_RECONNECT,
     CONNECTED
-    
 };
 
 class WiFiModulManager {
@@ -78,11 +79,13 @@ public:
 private:
     std::string gatewayIP;
     std::string subnetMask;
+    bool isStaticIpSet;
 
 public:
     std::string getGatewayIP() { return gatewayIP; }
     std::string getSubnetMask() { return subnetMask; }
     void geatherGatewayInfos(char* gatewayIP, char* subnetMask) { this->gatewayIP = gatewayIP; this->subnetMask = subnetMask; }
+    bool isGatewayInfosEmpty() { return gatewayIP.empty() || subnetMask.empty(); }
 
 // Reconnect to wifi -----------------------------------------------------
 public:
@@ -92,11 +95,15 @@ public:
 public:
     void disconnectFromWiFi();
 
+// WiFi Controls --------------------------------------------------------
+public:
+    void startWiFiControls();
+
 // Deinit wifi ----------------------------------------------------------
 public:
     ~WiFiModulManager();
 
-// Singleton -------------------------------------------------------------
+// Singleton ------------------------------------------------------------
 private:
     static WiFiModulManager* instance;
 
@@ -105,9 +112,14 @@ public:
 
     WiFiModulManager& operator=(const WiFiModulManager& wifiModulManager) = delete;
 
+    //static void init();
+
     static WiFiModulManager* getInstance();
-// -----------------------------------------------------------------------
+
+    static void deinit() { delete instance; }
 };
 
-// DONE: NetworkManager.h VERSION_ALPHA
+// FIXME: Creat the singleton init and deinit method for the WiFiModulManager, and rewrite the getInstance method to not create a new instance
+
+
 

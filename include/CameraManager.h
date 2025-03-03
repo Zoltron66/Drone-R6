@@ -13,8 +13,9 @@
 
 #pragma once
 
-#include "VersionControl.h"
+#include "DebugAndVersionControl.h"
 
+// C
 extern "C" {
 #include "esp_camera.h"
 }
@@ -76,5 +77,9 @@ public:
 
     CameraManager& operator=(const CameraManager& cameraManager) = delete;
 
-    static CameraManager* getInstance();
+    static void init();
+
+    static CameraManager* getInstance() { return instance; }
+
+    static void deinit();
 };

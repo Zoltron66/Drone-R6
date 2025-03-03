@@ -12,6 +12,8 @@
  */
 
 #include "WiFiModulManager.h"
+#include "LedManager.h"
+
 #include <arpa/inet.h>
 #include <lwip/inet.h>
 
@@ -26,7 +28,11 @@ static void WiFiEventCallback(void* arg, esp_event_base_t base, int32_t id, void
         switch (id) {
             case WIFI_EVENT_STA_DISCONNECTED: {
                 DEBUG_PRINT("Wi-Fi disconnected");
-                wifiModulManager->setNetworkStatus(DISCONNECTED);
+                if (wifiModulManager->getNetworkStatus() == CONNECTED) {
+                    wifiModulManager->setNetworkStatus(DISCONNECTED);
+                } else {
+                    DEBUG_PRINT("Maintaining network status");
+                }
                 break;
             }
             case WIFI_EVENT_STA_CONNECTED: {
@@ -69,6 +75,7 @@ WiFiModulManager::WiFiModulManager() {
     networkStatus = DISCONNECTED;
     gatewayIP = "";
     subnetMask = "";
+    isStaticIpSet = false;
 
     esp_err_t err = ESP_OK;
     // ----------------- Initialize Non-Volatile Storage (NVS) -----------------
@@ -176,47 +183,130 @@ void WiFiModulManager::connectToWiFi() {
 void WiFiModulManager::reconnectToWiFi() {
     DEBUG_PRINT("--- Reconnect Wi-Fi with static IP called");
 
-    esp_netif_ip_info_t ipInfo;
-    ipInfo.ip.addr = ipaddr_addr("172.20.10.2");
-    ipInfo.gw.addr = ipaddr_addr(gatewayIP.c_str());
-    ipInfo.netmask.addr = ipaddr_addr(subnetMask.c_str());
+    if (!isStaticIpSet) {
+        esp_netif_ip_info_t ipInfo;
+        ipInfo.ip.addr = ipaddr_addr("172.20.10.2");
+        ipInfo.gw.addr = ipaddr_addr(gatewayIP.c_str());
+        ipInfo.netmask.addr = ipaddr_addr(subnetMask.c_str());
 
-    ESP_ERROR_CHECK(esp_netif_dhcpc_stop(networkInterface)); // Stop DHCP client
-    ESP_ERROR_CHECK(esp_netif_set_ip_info(networkInterface, &ipInfo));
-
+        ESP_ERROR_CHECK(esp_netif_dhcpc_stop(networkInterface)); // Stop DHCP client
+        ESP_ERROR_CHECK(esp_netif_set_ip_info(networkInterface, &ipInfo));
+        isStaticIpSet = true;
+    }
     esp_wifi_connect();
     
-    DEBUG_PRINT("Wi-Fi reconnected ---");
+    DEBUG_PRINT("Wi-Fi reconnecting end ---");
 }
 
 // Disconnect from wifi -------------------------------------------------
 void WiFiModulManager::disconnectFromWiFi() {
     DEBUG_PRINT("--- Disconnect Wi-Fi called");
-    // NOTE: Maybe use this to geather the network subnet mask and gateway IP
-    // esp_netif_ip_info_t ipInfo;
-    // esp_netif_get_ip_info(networkInterface, &ipInfo);
-    // gatewayIP = inet_ntoa(ipInfo.gw);
-    // subnetMask = inet_ntoa(ipInfo.netmask);
     esp_wifi_disconnect();
+    networkStatus = DISCONNECTED;
     DEBUG_PRINT("Wi-Fi disconnected ---");
 }
+
+// WiFi Controls --------------------------------------------------------
+// Tasks ----------------------------------------------------------------
+static void taskWifiControl(void *pvParameters) {
+    WiFiModulManager* wifiModulManager = WiFiModulManager::getInstance();
+    LedManager* ledManager = LedManager::getInstance();
+
+    wifiModulManager->setNetworkStatus(TRYING_TO_CONNECT);
+
+    int8_t connectionStage = 0;
+    int8_t wifiTryAttempts = 0;
+    while (true) {
+        switch (wifiModulManager->getNetworkStatus()) {
+            case DISCONNECTED: {
+                DEBUG_PRINT("Wi-Fi disconnected or canceled");
+                // If there was a connection, play the disconnected animation
+                if (connectionStage == 2 || connectionStage == 1) {
+                    connectionStage = 0;
+                    ledManager->setAnimation(AnimationType::WIFI_DISCONNECTED);
+                }
+                // If the connection reachde the maximum attempts, then set the mode to room plant mode
+                if (wifiTryAttempts > WIFI_TRY_ATTEMPTS) {
+                    // TODO: Impement mode manager, then set it to room plant mode
+                    // In room plant mode: Set animation to IDLE and turn everithiong off
+                } 
+                // If there was a connection attempt, but canceld or there was no connection attemt, then do nothing
+                break;
+            }
+            case TRYING_TO_CONNECT: {
+                if (wifiTryAttempts <= WIFI_TRY_ATTEMPTS) {
+                    DEBUG_PRINT("Wi-Fi try to connect, attempt: %d", wifiTryAttempts);
+                    ledManager->setAnimation(AnimationType::WIFI_CONNECTING);
+                    wifiModulManager->connectToWiFi();
+                    wifiTryAttempts++;
+                } else { wifiModulManager->setNetworkStatus(DISCONNECTED); }
+                break;
+            }
+            case TRYING_TO_RECONNECT: {
+                if (wifiTryAttempts <= WIFI_TRY_ATTEMPTS) {
+                    DEBUG_PRINT("Wi-Fi try to reconnect, attempt: %d", wifiTryAttempts);
+                    ledManager->setAnimation(AnimationType::WIFI_CONNECTING);
+                    wifiModulManager->reconnectToWiFi();
+                    wifiTryAttempts++;
+                } else { wifiModulManager->setNetworkStatus(DISCONNECTED); }
+                break;
+            }
+            case CONNECTED: {
+                DEBUG_PRINT("Wi-Fi connected, connection stage: %d", connectionStage);
+                if (connectionStage == 0) {
+                    if (wifiModulManager->isGatewayInfosEmpty()) {
+                        DEBUG_PRINT("Gateway infos are empty, waiting to get the gateway infos...");
+                    } else {
+                        DEBUG_PRINT("Gateway infos are not empty, setting the gateway infos...");
+                        connectionStage = 1;
+                        wifiTryAttempts = 0;
+                        wifiModulManager->disconnectFromWiFi();
+                        wifiModulManager->setNetworkStatus(TRYING_TO_RECONNECT); // Then the task will reconnect
+                    }
+                } else if (connectionStage == 1) {
+                    connectionStage = 2;
+                    wifiTryAttempts = 0;
+                    ledManager->setAnimation(AnimationType::WIFI_CONNECTED); // Then automatically shows the idle animation
+                }
+                break;
+            }
+            default: {
+                DEBUG_PRINT("Network status not exist [Not DISCONNECTED, TRYING_TO_CONNECT, TRYING_TO_RECONNECT, CONNECTED]");
+                break;
+            }
+        }
+        vTaskDelay(2000 / portTICK_PERIOD_MS);
+    }
+    vTaskDelete(NULL);
+}
+
+static TaskHandle_t wifiTaskHandle = nullptr;
+void WiFiModulManager::startWiFiControls() {
+    xTaskCreatePinnedToCore(&taskWifiControl, "WIF_CONT", 2048, nullptr, 4, &wifiTaskHandle, 1);
+}
+
 
 // Deinitialize the WiFi module -----------------------------------------
 WiFiModulManager::~WiFiModulManager() {
     DEBUG_PRINT("--- Deinit Wi-Fi called");
-    esp_err_t err = esp_wifi_stop();
-    if (err == ESP_ERR_WIFI_NOT_INIT) {
-        DEBUG_PRINT("Wi-Fi cant be deinitialized, because it is not initialized");
-        return;
-    }
+    // BUG: This causes a crash, deleting an instance inside an instance cause stack overflow, because its a deinit loop
+    // BUG: Solution: If I create a static deinit method, then I can call it just like this: WiFiModulManager::deinit(); And I can create a flag for a task to delete itself
+    // vTaskDelete(wifiTaskHandle);
 
-    ESP_ERROR_CHECK(esp_wifi_deinit());
-    ESP_ERROR_CHECK(esp_wifi_clear_default_wifi_driver_and_handlers(networkInterface));
-    esp_netif_destroy(networkInterface);
+    // esp_err_t err = esp_wifi_stop();
+    // if (err == ESP_ERR_WIFI_NOT_INIT) {
+    //     DEBUG_PRINT("Wi-Fi cant be deinitialized, because it is not initialized");
+    //     delete instance;
+    //     return;
+    // }
 
-    ESP_ERROR_CHECK(esp_event_handler_instance_unregister(IP_EVENT, ESP_EVENT_ANY_ID, ipEventHandler));
-    ESP_ERROR_CHECK(esp_event_handler_instance_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, wifiEventHandler));
-    delete instance;
+    // ESP_ERROR_CHECK(esp_wifi_deinit());
+    // ESP_ERROR_CHECK(esp_wifi_clear_default_wifi_driver_and_handlers(networkInterface));
+    // esp_netif_destroy(networkInterface);
+
+    // ESP_ERROR_CHECK(esp_event_handler_instance_unregister(IP_EVENT, ESP_EVENT_ANY_ID, ipEventHandler));
+    // ESP_ERROR_CHECK(esp_event_handler_instance_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, wifiEventHandler));
+    // delete instance;
     DEBUG_PRINT("Wi-Fi deinited ---");
 }
 
@@ -230,4 +320,3 @@ WiFiModulManager* WiFiModulManager::getInstance() {
     return instance;
 }
 
-// DONE: WiFiModulManager.cpp VERSION_ALPHA

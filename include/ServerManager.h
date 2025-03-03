@@ -13,12 +13,13 @@
 
 #pragma once
 
-#include "VersionControl.h"
+#include "DebugAndVersionControl.h"
 
 extern "C" {
 #include "esp_http_server.h"
 }
 
+// Server Manager ----------------------------------------------------------------
 class ServerManager {
 // Init server manager ---------------------------------------------------
 private:
@@ -28,6 +29,7 @@ private:
 private:
     // httpd_uri_t indexUri;
     httpd_uri_t connectionUri;
+    httpd_uri_t disconnectionUri;
     httpd_uri_t moveUri;
     httpd_uri_t getSettingsUri;
     httpd_uri_t setWiFiUri;
@@ -56,6 +58,8 @@ public:
     ServerManager& operator=(const ServerManager& serverManager) = delete;
 
     static ServerManager* getInstance();
+
+    static void deinit() { delete instance; }
 };
 
 // DONE: ServerManager.h VERSION_ALPHA

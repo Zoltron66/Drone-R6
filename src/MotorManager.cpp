@@ -22,11 +22,6 @@ extern "C" {
 
 // Motor --------------------------------------------------------------------------------------------------------
 // Init motor -----------------------------------------------------------
-Motor::Motor() {
-    motorCCW = MOTOR_1_CCW;
-    motorCW = MOTOR_1_CW;
-}
-
 Motor::Motor(int8_t motorCWPin, ledc_channel_t motorCW, int8_t motorCCWPin, ledc_channel_t motorCCW) {
     this->motorCW = motorCW;
     this->motorCCW = motorCCW;
@@ -86,7 +81,7 @@ void Motor::motorPinConfig(int8_t pin, ledc_channel_t motor) {
         .duty = 0,
         .hpoint = 0,
         //.sleep_mode = LEDC_SLEEP_MODE_NO_ALIVE_ALLOW_PD,
-        .flags = { .output_invert = 0 }
+        .flags = { .output_invert = false }
     };
     ESP_ERROR_CHECK(ledc_channel_config(&channelConfig));
     DEBUG_PRINT("Motor pins configured ---");
@@ -233,15 +228,35 @@ void MotorManager::directionControlAutoAssisted() { }
 #endif
 
 // Motor Controls --------------------------------------------------------
+// Tasks ----------------------------------------------------------------
+static void taskDirectionControl(void *pvParameters) {
+    MotorManager* motorManager = MotorManager::getInstance();
+    while (true) {
+#ifdef MANUAL_CONTROL
+        motorManager->directionControlManual();
+#endif
+#ifdef VERSION_BETA_OR_LATER
+#ifdef AUTO_CONTROL
+        motorManager->directionControlAutoAssisted();
+#endif
+#endif
+        vTaskDelay(20 / portTICK_PERIOD_MS);
+    }
+    vTaskDelete(NULL);
+}
+
+static TaskHandle_t motorTaskHandle = nullptr;
 void MotorManager::startMotorControls() {
-    xTaskCreate(&taskDirectionControl, "DIR_CONT", 2048, NULL, 5, NULL);
+    xTaskCreatePinnedToCore(&taskDirectionControl, "DIR_CONT", 1024, nullptr, 5, &motorTaskHandle, 1);
 }
 
 // Deinit motor manager ------------------------------------------------
 MotorManager::~MotorManager() {
-    leftMotor.~Motor();
-    rightMotor.~Motor();
-    delete instance;
+    // BUG: This causes a crash, deleting an instance inside an instance cause stack overflow, because its a deinit loop
+    // vTaskDelete(motorTaskHandle);
+    // leftMotor.~Motor();
+    // rightMotor.~Motor();
+    // delete instance;
 }
 
 // Singleton -------------------------------------------------------------
@@ -252,22 +267,6 @@ MotorManager* MotorManager::getInstance() {
         instance = new MotorManager();
     }
     return instance;
-}
-
-// Tasks ----------------------------------------------------------------
-void taskDirectionControl(void *pvParameters) {
-    while (true) {
-#ifdef MANUAL_CONTROL
-        MotorManager::getInstance()->directionControlManual();
-#endif
-#ifdef VERSION_BETA_OR_LATER
-#ifdef AUTO_CONTROL
-        MotorManager::getInstance()->directionControlAutoAssisted();
-#endif
-#endif
-        vTaskDelay(10 / portTICK_PERIOD_MS);
-    }
-    vTaskDelete(NULL);
 }
 
 // DONE: MotorManager.c VERSION_ALPHA

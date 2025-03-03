@@ -13,7 +13,7 @@
 
 #pragma once
 
-#include "VersionControl.h"
+#include "DebugAndVersionControl.h"
 
 #ifdef VERSION_BETA_OR_LATER
 // Gyro Sensor GPIO pins (MPU-6050)
@@ -21,5 +21,5 @@
 #define GYRO_SCL                1   // GPIO_1
 
 
-// TODO: Future implementation: Gyro Sensor Manager for Auto-Assisted Controls, stabilization, and orientation detection (mini-compass info).
+// NOTE: Future implementation: Gyro Sensor Manager for Auto-Assisted Controls, stabilization, and orientation detection (mini-compass info).
 #endif

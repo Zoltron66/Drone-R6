@@ -13,6 +13,7 @@
 
 #include "ServerManager.h"
 #include "MotorManager.h"
+#include "LedManager.h"
 #include <iostream>
 
 extern "C" {
@@ -22,31 +23,16 @@ extern "C" {
 #include "esp_timer.h"
 }
 
+// Server Manager -------------------------------------------------------------------
 // Command Server -----------------------------------------------------------
-// static esp_err_t indexHandler(httpd_req_t *req) {
-//     // HTML format
-//     // <html>
-//     //     <head>
-//     //         <title>Drone R6</title>
-//     //         <meta name="viewport" content="width=device-width, initial-scale=1">
-//     //         <style>
-//     //             img {
-//     //                 width: 100vw;
-//     //             }
-//     //         </style>
-//     //     </head>
-//     //     <body>
-//     //         <img src="" id="stream">
-//     //         <script>
-//     //             window.onload = document.getElementById("stream").src = window.location.href.slice(0, -1) + ":81/str";
-//     //     </body>
-//     // </html>
-//     httpd_resp_set_type(req, "text/html");
-//     return httpd_resp_send(req, "<html><head><title>Drone R6</title><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><style>img {width: 100vw; padding: 0px;}</style></head><body><img src=\"\" id=\"stream\"><script>window.onload = document.getElementById(\"stream\").src = window.location.href.slice(0, -1) + \":81/str\";</script></body></html>", -1);
-// }
-
 static esp_err_t connectionHandler(httpd_req_t *req) {
+    LedManager::getInstance()->setAnimation(AnimationType::IDLE);
     return httpd_resp_send(req, "OK", 2);
+}
+
+static esp_err_t disconnectionHandler(httpd_req_t *req) {
+    LedManager::getInstance()->setAnimation(AnimationType::NONE);
+    return httpd_resp_send(req, nullptr, 0);
 }
 
 static esp_err_t moveHandler(httpd_req_t *req) {
@@ -132,6 +118,7 @@ static esp_err_t getSettingsHandler(httpd_req_t *req) {
 
 static esp_err_t setWiFiHandler(httpd_req_t *req) {
     // Something like the moveHandler
+    // TODO: Implement the setWiFiHandler
     // WiFiModulManager* wifiModulManager = WiFiModulManager::getInstance();
     // wifiModulManager->setNextSSID("ssid");
     // wifiModulManager->setNextPassword("password");
@@ -139,12 +126,15 @@ static esp_err_t setWiFiHandler(httpd_req_t *req) {
 }
 
 static esp_err_t setLedHandler(httpd_req_t *req) {
+    // Something like the moveHandler
+    // TODO: Implement the setLedHandler
     // LedManager* ledManager = LedManager::getInstance();
     // ledManager->setLedColor(2);
     return httpd_resp_send(req, nullptr, 0);
 }
 
 static esp_err_t setRoomPlantHandler(httpd_req_t *req) {
+    // TODO: Implement the setRoomPlantHandler
     // ModeManager::getInstance()->setMode(ROOM_PLANT);
     return httpd_resp_send(req, nullptr, 0);
 }
@@ -200,18 +190,17 @@ static esp_err_t streamHandler(httpd_req_t *req) {
 
 ServerManager::ServerManager() {
     DEBUG_PRINT("--- Init Servers called");
-    // Command Server -----------------------------------------------------------
-    // indexUri = {
-    //     .uri = "/",
-    //     .method = HTTP_GET,
-    //     .handler = indexHandler,
-    //     .user_ctx = nullptr
-    // };
-
     connectionUri = {
         .uri = "/con",
         .method = HTTP_GET,
         .handler = connectionHandler,
+        .user_ctx = nullptr
+    };
+
+    disconnectionUri = {
+        .uri = "/dis",
+        .method = HTTP_GET,
+        .handler = disconnectionHandler,
         .user_ctx = nullptr
     };
 
@@ -269,8 +258,8 @@ void ServerManager::startServers() {
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
     config.server_port = 80;
     if (httpd_start(&commandServer, &config) == ESP_OK) {
-        // httpd_register_uri_handler(commandServer, &indexUri);
         httpd_register_uri_handler(commandServer, &connectionUri);
+        httpd_register_uri_handler(commandServer, &disconnectionUri);
         httpd_register_uri_handler(commandServer, &moveUri);
         httpd_register_uri_handler(commandServer, &getSettingsUri);
         httpd_register_uri_handler(commandServer, &setWiFiUri);
@@ -289,8 +278,8 @@ void ServerManager::startServers() {
 // Deinit server manager ----------------------------------------------------
 ServerManager::~ServerManager() {
     DEBUG_PRINT("--- Deinit Servers called");
-    httpd_stop(commandServer);
-    httpd_stop(videoServer);
+    if (commandServer) { httpd_stop(commandServer); }
+    if (videoServer) { httpd_stop(videoServer); }
     delete instance;
     DEBUG_PRINT("Servers deinited ---");
 }

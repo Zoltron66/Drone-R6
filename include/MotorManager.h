@@ -13,7 +13,7 @@
 
 #pragma once
 
-#include "VersionControl.h"
+#include "DebugAndVersionControl.h"
 #include "driver/ledc.h" // LEDC driver for PWM control
 
 // Motor GPIO pins
@@ -53,15 +53,13 @@ struct ControlData {
 class Motor {
 // Init motor -----------------------------------------------------------
 public:
-    Motor(); // Do not use this constructor. (constructs a Motor object with MOTOR_1_CW and MOTOR_1_CCW)
-
     /**
      * @brief Construct a new Motor object.
      *
      * @param motorCW LEDC channel for the motor in the clockwise direction.
      * @param motorCCW LEDC channel for the motor in the counter-clockwise direction.
      */
-    Motor(int8_t motorCWPin, ledc_channel_t motorCW, int8_t motorCCWPin, ledc_channel_t motorCCW);
+    Motor(int8_t motorCWPin = MOTOR_1_GPIO_CW, ledc_channel_t motorCW = MOTOR_1_CW, int8_t motorCCWPin = MOTOR_1_GPIO_CCW, ledc_channel_t motorCCW = MOTOR_1_CCW);
 
 // Speed and motor channels ----------------------------------------------
 private:
@@ -204,9 +202,8 @@ public:
     MotorManager& operator=(const MotorManager& motorManager) = delete;
 
     static MotorManager* getInstance();
-};
 
-// Tasks ----------------------------------------------------------------
-void taskDirectionControl(void *pvParameters);
+    static void deinit() { delete instance; }
+};
 
 // DONE: MotorManager.h VERSION_ALPHA

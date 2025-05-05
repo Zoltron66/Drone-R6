@@ -13,7 +13,7 @@
 
 #pragma once
 
-#define UNIT_TESTS // Comment to disable unit tests
+//#define UNIT_TESTS // Comment to disable unit tests
 
 #ifdef UNIT_TESTS
 

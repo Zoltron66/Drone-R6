@@ -51,21 +51,47 @@ extern "C" void app_main(void)
     // TODO: Implement the main function
     initialize();
     process();
-    cleanup();
+    //cleanup();
+
+    while (true) {
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+    }
+
+
 #endif
 #endif
 }
 
 #ifndef UNIT_TESTS
 void initialize() {
-    
+    LedManager::init();
+    // WifiModulManager::init(); Future implementation: WiFi Modul Manager init function
+    CameraManager::init();
+    // MotorManager::init(); Future implementation: Motor Manager init function
+    // ServerManager::init(); Future implementation: Server Manager init function
+
 }
 
 void process() {
+    LedManager::getInstance()->startLedArrayControls();
     
+    WiFiModulManager* wifiModulManager = WiFiModulManager::getInstance();
+    wifiModulManager->setSSID(WIFI_SSID);
+    wifiModulManager->setPassword(WIFI_PASSWORD);
+    wifiModulManager->startWiFiControls();
+
+    
+    MotorManager::getInstance()->startMotorControls();
+
+    vTaskDelay(30000 / portTICK_PERIOD_MS); // Wait for the wifi to connect
+    ServerManager::getInstance()->startServers();
 }
 
 void cleanup() {
-    
+    LedManager::deinit();
+    // WifiModulManager::deinit(); Future implementation: WiFi Modul Manager deinit function
+    CameraManager::deinit();
+    // MotorManager::deinit(); Future implementation: Motor Manager deinit function
+    // ServerManager::deinit(); Future implementation: Server Manager deinit function
 }
 #endif

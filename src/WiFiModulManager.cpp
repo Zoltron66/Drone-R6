@@ -50,6 +50,8 @@ static void WiFiEventCallback(void* arg, esp_event_base_t base, int32_t id, void
             case IP_EVENT_STA_GOT_IP: {
                 ip_event_got_ip_t* eventIP = (ip_event_got_ip_t*)data;
                 DEBUG_PRINT("Got IP: " IPSTR, IP2STR(&eventIP->ip_info.ip));
+                DEBUG_PRINT("Got Gateway: " IPSTR, IP2STR(&eventIP->ip_info.gw));
+                DEBUG_PRINT("Got Netmask: " IPSTR, IP2STR(&eventIP->ip_info.netmask));
                 wifiModulManager->geatherGatewayInfos(
                     inet_ntoa(eventIP->ip_info.gw),
                     inet_ntoa(eventIP->ip_info.netmask)
@@ -187,7 +189,9 @@ void WiFiModulManager::reconnectToWiFi() {
         esp_netif_ip_info_t ipInfo;
         ipInfo.ip.addr = ipaddr_addr("172.20.10.2");
         ipInfo.gw.addr = ipaddr_addr(gatewayIP.c_str());
+        DEBUG_PRINT("GW: %s", gatewayIP.c_str());
         ipInfo.netmask.addr = ipaddr_addr(subnetMask.c_str());
+        DEBUG_PRINT("NM: %s", subnetMask.c_str());
 
         ESP_ERROR_CHECK(esp_netif_dhcpc_stop(networkInterface)); // Stop DHCP client
         ESP_ERROR_CHECK(esp_netif_set_ip_info(networkInterface, &ipInfo));
@@ -225,7 +229,7 @@ static void taskWifiControl(void *pvParameters) {
                     connectionStage = 0;
                     ledManager->setAnimation(AnimationType::WIFI_DISCONNECTED);
                 }
-                // If the connection reachde the maximum attempts, then set the mode to room plant mode
+                // If the connection reached the maximum attempts, then set the mode to room plant mode
                 if (wifiTryAttempts > WIFI_TRY_ATTEMPTS) {
                     // TODO: Impement mode manager, then set it to room plant mode
                     // In room plant mode: Set animation to IDLE and turn everithiong off

@@ -255,7 +255,8 @@ static httpd_handle_t videoServer = nullptr;
 
 void ServerManager::startServers() {
     DEBUG_PRINT("--- Starting servers");
-    httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+    httpd_config_t config = HTTPD_DEFAULT_CONFIG(); // If I would like to change this task settings (core, size etc.), I have to change this confog struct
+    
     config.server_port = 80;
     if (httpd_start(&commandServer, &config) == ESP_OK) {
         httpd_register_uri_handler(commandServer, &connectionUri);

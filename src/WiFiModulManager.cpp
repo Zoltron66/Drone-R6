@@ -187,7 +187,7 @@ void WiFiModulManager::reconnectToWiFi() {
 
     if (!isStaticIpSet) {
         esp_netif_ip_info_t ipInfo;
-        ipInfo.ip.addr = ipaddr_addr("172.20.10.2");
+        ipInfo.ip.addr = ipaddr_addr("192.168.1.88"); //ipaddr_addr("172.20.10.2");
         ipInfo.gw.addr = ipaddr_addr(gatewayIP.c_str());
         DEBUG_PRINT("GW: %s", gatewayIP.c_str());
         ipInfo.netmask.addr = ipaddr_addr(subnetMask.c_str());

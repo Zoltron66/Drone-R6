@@ -17,8 +17,8 @@
 #include "driver/ledc.h" // LEDC driver for PWM control
 
 // Motor GPIO pins
-#define MOTOR_2_GPIO_CW         GPIO_NUM_12
-#define MOTOR_2_GPIO_CCW        GPIO_NUM_13
+#define MOTOR_2_GPIO_CW         GPIO_NUM_13
+#define MOTOR_2_GPIO_CCW        GPIO_NUM_12
 #define MOTOR_1_GPIO_CW         GPIO_NUM_14
 #define MOTOR_1_GPIO_CCW        GPIO_NUM_2
 

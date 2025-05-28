@@ -73,7 +73,9 @@ void initialize() {
 }
 
 void process() {
-    LedManager::getInstance()->startLedArrayControls();
+    LedManager* ledManager = LedManager::getInstance();
+    ledManager->startLedArrayControls();
+    ledManager->setColor(Colors::Orange);
     
     WiFiModulManager* wifiModulManager = WiFiModulManager::getInstance();
     wifiModulManager->setSSID(WIFI_SSID);

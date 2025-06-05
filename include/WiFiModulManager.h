@@ -89,6 +89,13 @@ public:
 
 // Reconnect to wifi -----------------------------------------------------
 public:
+    /**
+     * @brief Reconnects to the WiFi network.
+     * This function attempts to reconnect to the WiFi network using the stored SSID and password.
+     * If the connection fails, it retries a specified number of times.
+     * 
+     * It recconects with static IP.
+     */
     void reconnectToWiFi();
 
 // Disconnect from wifi -------------------------------------------------
@@ -97,6 +104,10 @@ public:
 
 // WiFi Controls --------------------------------------------------------
 public:
+    /**
+     * @brief Starts the WiFi controls.
+     * This function initializes the WiFi module and starts the necessary tasks for WiFi management.
+     */
     void startWiFiControls();
 
 // Deinit wifi ----------------------------------------------------------

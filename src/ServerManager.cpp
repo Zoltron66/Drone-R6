@@ -35,6 +35,15 @@ static esp_err_t disconnectionHandler(httpd_req_t *req) {
     return httpd_resp_send(req, nullptr, 0);
 }
 
+/**
+ * @brief Handler for the move command.
+ * @param req Pointer to the HTTP request.
+ * @return ESP_OK on success, or an error code on failure.
+ * 
+ * This handler processes the move command by extracting the X, Y, L, and R axis values
+ * from the query parameters of the HTTP request.
+ * It then sets the control data in the MotorManager instance to control the drone's movement.
+ */
 static esp_err_t moveHandler(httpd_req_t *req) {
     char*  buf;
     size_t bufferLength;
@@ -140,6 +149,7 @@ static esp_err_t setRoomPlantHandler(httpd_req_t *req) {
 }
 
 // Video Server -------------------------------------------------------------
+// These are the settings for the video stream, this nimbers are used in the streamHandler function, and come from the esp32-camera library.
 #define PART_BOUNDARY "123456789000000000000987654321"
 static const char* STREAM_CONTENT_TYPE = "multipart/x-mixed-replace;boundary=" PART_BOUNDARY;
 static const char* STREAM_BOUNDARY = "\r\n--" PART_BOUNDARY "\r\n";
@@ -188,6 +198,12 @@ static esp_err_t streamHandler(httpd_req_t *req) {
     return res;
 }
 
+/**
+ * @brief Constructor for the ServerManager class.
+ * Initializes the HTTP server URIs for various commands.
+ * This constructor sets up the URIs for connection, disconnection, movement, getting settings,
+ * setting WiFi, setting LED, and setting room plant mode.
+ */
 ServerManager::ServerManager() {
     DEBUG_PRINT("--- Init Servers called");
     connectionUri = {

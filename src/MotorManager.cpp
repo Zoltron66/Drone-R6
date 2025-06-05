@@ -58,6 +58,15 @@ int16_t Motor::convertSpeedPercentageToDutyCycle(int16_t speed) {
     else { return int16_t(speed * 1.6 - MOTOR_MIN_SPEED); }
 }
 
+/**
+ * @brief Configure the GPIO pins for the motor.
+ * @param pin GPIO pin number.
+ * @param motor LEDC channel for the motor.
+ * 
+ * This function initializes the LEDC timer and channel configurations
+ * for the motor control pins. It sets the speed mode, duty resolution,
+ * timer number, frequency, and other parameters required for PWM control.
+ */
 void Motor::motorPinConfig(int8_t pin, ledc_channel_t motor) {
     DEBUG_PRINT("--- Configuring motor pins");
     memset(&timerConfig, 0, sizeof(ledc_timer_config_t));
@@ -107,6 +116,18 @@ MotorManager::MotorManager() {
 
 // Motor controls -------------------------------------------------------
 #ifdef MANUAL_CONTROL
+/**
+ * @brief Move the drone on the Y-axis manually.
+ * @param speed Speed of the drone (0-100).
+ * @param L Steering of the drone on the Z-axis (0-100).
+ * @param R Steering of the drone on the Z-axis (0-100).
+ * 
+ * This function controls the movement of the drone on the Y-axis
+ * based on the speed and steering inputs. It adjusts the speed
+ * of the left and right motors to achieve the desired movement.
+ * 
+ * It activates only when the drone is not moving on the X-axis.
+ */
 void MotorManager::moveOnYAxisManual(int16_t speed, int8_t L, int8_t R) {
     // Move forward
     if (speed > 0) {
@@ -147,6 +168,16 @@ void MotorManager::moveOnYAxisManual(int16_t speed, int8_t L, int8_t R) {
     else { allStop(); }                     // For safety
 }
 
+/**
+ * @brief Move the drone on the X-axis manually.
+ * @param speed Speed of the drone (0-100).
+ * 
+ * This function controls the movement of the drone on the X-axis
+ * based on the speed input. It adjusts the speed of the left and right motors
+ * to achieve the desired horizontal movement.
+ * 
+ * It activates only when the drone is not moving on the Y-axis
+ */
 void MotorManager::moveOnXAxisManual(int16_t speed) {
     // Move right
     if (speed > 0) {
@@ -162,6 +193,17 @@ void MotorManager::moveOnXAxisManual(int16_t speed) {
     else { allStop(); }                 // For safety
 }
 
+/**
+ * @brief Turn on the Z-axis manually.
+ * @param L Steering of the drone on the Z-axis (0-100).
+ * @param R Steering of the drone on the Z-axis (0-100).
+ * 
+ * This function controls the rotation of the drone around the Z-axis
+ * based on the steering inputs. It adjusts the speed of the left and right motors
+ * to achieve the desired rotation direction.
+ * 
+ * It activates only when the drone is not moving on the X or Y axes.
+ */
 void MotorManager::turnOnZAxisManual(int8_t L, int8_t R) {
     // Rotate left
     if (L > 0 && R == 0) {

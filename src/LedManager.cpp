@@ -126,6 +126,17 @@ struct RmtLedArrayEncoder {
     rmt_symbol_word_t resetCode;
 };
 
+/**
+ * @brief Encode RGB data into RMT symbols and send it to the LED array.
+ * This function encodes the RGB data into RMT symbols and sends it to the LED array.
+ * It handles the encoding session state and manages the transition between sending RGB data and the reset code.
+ * @param encoder Pointer to the RMT encoder handle.
+ * @param channel RMT channel handle to send the encoded symbols.
+ * @param primaryData Pointer to the RGB data to be encoded.
+ * @param dataSize Size of the RGB data in bytes.
+ * @param retState Pointer to store the current encoding state.
+ * @return Number of RMT symbols that the primary data has been encoded into.   
+ */
 static size_t rmtEncodeLedArray(rmt_encoder_t *encoder, rmt_channel_handle_t channel, const void *primaryData, size_t dataSize, rmt_encode_state_t *retState) {
     RmtLedArrayEncoder *ledEncoder = __containerof(encoder, RmtLedArrayEncoder, baseEncoder);
     rmt_encoder_handle_t bytesEncoder = ledEncoder->bytesEncoder;
@@ -161,6 +172,12 @@ static size_t rmtEncodeLedArray(rmt_encoder_t *encoder, rmt_channel_handle_t cha
     return encodedSymbols;
 }
 
+/**
+ * @brief Delete the RMT LED array encoder and free its resources.
+ * This function deletes the RMT LED array encoder and frees the memory allocated for it.
+ * @param encoder Pointer to the RMT encoder handle to be deleted.
+ * @return ESP_OK
+ */
 static esp_err_t rmtDeleteLedArrayEncoder(rmt_encoder_t *encoder) {
     RmtLedArrayEncoder *ledEncoder = __containerof(encoder, RmtLedArrayEncoder, baseEncoder);
     rmt_del_encoder(ledEncoder->bytesEncoder);
@@ -169,6 +186,12 @@ static esp_err_t rmtDeleteLedArrayEncoder(rmt_encoder_t *encoder) {
     return ESP_OK;
 }
 
+/**
+ * @brief Reset the RMT LED array encoder to its initial state.
+ * This function resets the RMT LED array encoder, clearing its state and preparing it for a new encoding session.
+ * @param encoder Pointer to the RMT encoder handle to be reset.
+ * @return ESP_OK
+ */
 static esp_err_t rmtResetLedArrayEncoder(rmt_encoder_t *encoder) {
     RmtLedArrayEncoder *ledEncoder = __containerof(encoder, RmtLedArrayEncoder, baseEncoder);
     rmt_encoder_reset(ledEncoder->bytesEncoder);
@@ -225,6 +248,10 @@ LedManager::LedManager() {
     
     uint16_t duration01 = (uint16_t)(0.3 * RMT_LED_RESOLUTION_HZ / 1000000);
     uint16_t duration10 = (uint16_t)(0.9 * RMT_LED_RESOLUTION_HZ / 1000000);
+
+    // Configure the bytes encoder for WS2812
+    // WS2812 uses 0.3us for bit0 and 0.9us for bit1, with a reset code of 50us
+    // The bit0 and bit1 durations are in microseconds, converted to ticks based on the RMT resolution
     rmt_bytes_encoder_config_t bytesEncoderConfig = {
         .bit0 = {
             .duration0 = duration01,
@@ -245,6 +272,9 @@ LedManager::LedManager() {
     ESP_ERROR_CHECK(rmt_new_copy_encoder(&encoderConfig, &ledEncoder->copyEncoder));
 
     uint16_t reset_ticks = (uint16_t)(RMT_LED_RESOLUTION_HZ / 1000000 * 50 / 2); // reset code duration defaults to 50us
+    // Configure the reset code for WS2812
+    // The reset code is a symbol with a duration of 50us, which is 25 ticks at the RMT resolution
+    // The reset code is sent after the RGB data to signal the end of the transmission
     ledEncoder->resetCode = (rmt_symbol_word_t) {
         .duration0 = reset_ticks,
         .level0 = 0,
@@ -300,6 +330,13 @@ void LedManager::playNone() {
 void LedManager::playIdleAnimation() {
     resetAnimationStageIfChanged(AnimationType::IDLE, LED_ANIMATION_IDLE_SPEED);
     switch (animationStage) {
+        /*
+            * Animation Stage 0: Initialize the animation with all LEDs set to the target color and minimum brightness.
+            * Animation Stage 1: Move all LEDs towards the target color brightness, starting from minimum to maximum.
+            * Animation Stage 2: Move all LEDs towards the target color brightness, starting from maximum to minimum.
+            * This creates a pulsing effect where the LEDs fade in and out continuously.
+            * The animation alternates between stages 1 and 2, creating a smooth transition effect.
+        */
         case 0: // Initialize the animation
             for (uint8_t i = 0; i < 6; i++) {
                 LED[i].setColor(currentColor);
@@ -373,6 +410,15 @@ void LedManager::playIdleDebugAnimation() {
 void LedManager::playWifiConnectingAnimation() {
     resetAnimationStageIfChanged(AnimationType::WIFI_CONNECTING, LED_ANIMATION_WIFI_CONNECTING_SPEED);
     switch (animationStage) {
+        /*
+            * Animation Stage 0: Initialize the animation with LED[0] and LED[5] set to the target color and minimum brightness.
+            * Animation Stage 1: Move LED[0] and LED[5] towards the target color brightness, while LED[1], LED[2], LED[3], and LED[4] remain at minimum brightness.
+            * Animation Stage 2: Move LED[1] and LED[4] towards the target color brightness, while LED[0], LED[2], LED[3], and LED[5] remain at minimum brightness.
+            * Animation Stage 3: Move LED[2] and LED[3] towards the target color brightness, while LED[0], LED[1], LED[4], and LED[5] remain at minimum brightness.
+            * Animation Stage 4: Move LED[0] and LED[5] towards the target color brightness, while LED[1], LED[2], LED[3], and LED[4] remain at minimum brightness.
+            * This creates a wawe-like effect where the LEDs pulse in a sequence, creating a visually appealing animation for WiFi connection status.
+            * The animation alternates between stages 1, 2, 3, and 4, creating a smooth transition effect.
+        */
         case 0:
             LED[0].setColor(Colors::Wifi);
             LED[0].setCurrentColorBrightness(LED_ANIMATION_WIFI_CONNECTING_MIN_BRIGHTNESS);
@@ -443,6 +489,10 @@ void LedManager::playWifiConnectingAnimation() {
 void LedManager::playWifiConnectedAnimation() {
     resetAnimationStageIfChanged(AnimationType::WIFI_CONNECTED, LED_ANIMATION_WIFI_CONNECTED_SPEED);
     switch (animationStage) {
+        /*
+            Its a simple animation that creates a faster wawe-like effect that turns the LEDs to green color.
+            This animation is used to indicate that the WiFi connection is established successfully.
+        */
         case 0:
             LED[0].setColor(Colors::Wifi);
             LED[0].setCurrentColorBrightness(LED_ANIMATION_WIFI_CONNECTING_MIN_BRIGHTNESS);
@@ -553,6 +603,11 @@ void LedManager::playWifiConnectedAnimation() {
 void LedManager::playWifiDisconnectedAnimation() {
     resetAnimationStageIfChanged(AnimationType::WIFI_DISCONNECTED, LED_ANIMATION_WIFI_DISCONNECTED_SPEED);
     switch (animationStage) { // Wifi(10U, 100U, 250U) -> Orange(150U, 25U, 10U)
+        /*
+            This animation creates a linearly rising and then fast falling effect
+            where the LEDs turn to orange color and then fade out quickly.
+            The animation is used to indicate that the WiFi connection is lost or disconnected. 
+        */
         case 0:
             LED[0].setColor(Colors::Error);
             LED[0].setCurrentColorBrightness(LED_ANIMATION_WIFI_CONNECTING_MIN_BRIGHTNESS);
@@ -730,6 +785,13 @@ void LedManager::playWifiDisconnectedAnimation() {
 }
 
 // LED Array Controls --------------------------------------------------------
+/**
+ * @brief Transmits the current color states of the LEDs to the LED array.
+ * This function prepares the pixel data for the LED array and sends it using RMT (Remote Control) transmission.
+ * It constructs an array of pixel data where each LED's color is represented by three consecutive bytes (G, R, B).
+ * The function uses the RMT API to transmit the pixel data to the LED array.
+ * This function is called periodically to update the LED array with the current color states of each LED.
+ */
 void LedManager::transmitWaveformToLedArray() {
     uint8_t ledPixels[18]; // 6 LEDs * 3 colors
     for (uint8_t i = 0; i < 6; i++) {
@@ -752,6 +814,11 @@ void LedManager::transmitWaveformToLedArray() {
 }
 
 // Tasks -------------------------------------------------------------
+/**
+ * @brief Task that controls the LED array animations.
+ * This task runs in a loop, checking the current animation type and playing the corresponding animation.
+ * It updates the LED array with the current color stages of each LED.
+ */
 static void taskLedArrayControls(void *pvParameters) {
     LedManager *ledManager = LedManager::getInstance();
     while (true) {

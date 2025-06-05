@@ -28,19 +28,6 @@
 #endif
 
 
-
-// init storage manager
-// get data from storage
-// check if data storage is full or other problem occured
-// if yes
-//      delete data from storage
-//      save gained data to storage
-// if not
-//      do nothing
-
-
-// Plus save to storage functions
-
 // Storage manager ---------------------------------------------------------------------
 class StorageManager {
 // Init storage ---------------------------------------------------------

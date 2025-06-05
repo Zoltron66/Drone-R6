@@ -4,3 +4,7 @@
 .vscode/launch.json
 .vscode/ipch
 include/AuthAndPasswords.h
+include/ModeManager.h
+include/MotorDecoder.h
+include/DistanceSensorManager.h
+include/GyroSensorManager.h

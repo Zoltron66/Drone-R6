@@ -26,6 +26,11 @@ extern "C" {
 // Colors -------------------------------------------------------------------------------------------------------
 namespace Colors {
     // RGB Color -------------------------------------------------------------------------------------------------
+    /**
+     * @brief Represents an RGB color with adjustable brightness.
+     * This class allows you to set and get RGB values, adjust brightness,
+     * and compare colors.
+     */
     class Color {
     // Init RGB Color ----------------------------------------------
     public:
@@ -66,9 +71,9 @@ namespace Colors {
     };
 
     // Default Gadget RGB Colors
-    static const Color Orange(110U, 20U, 0U);   // 
+    static const Color Orange(110U, 20U, 0U);   // OK
     static const Color Red(250U, 8U, 0U);       // OK
-    static const Color Blue(0U, 50U, 255U);     //
+    static const Color Blue(0U, 50U, 255U);     // OK
 
     // Reflector RGB Color
     static const Color White(255U, 255U, 255U); // Obviously OK
@@ -81,11 +86,16 @@ namespace Colors {
     static const Color Error(255U, 0U, 0U);     // OK
 
     // OFF RGB Color
-    static const Color Off(0U, 0U, 0U, 0U);         // Obviously OK
+    static const Color Off(0U, 0U, 0U, 0U);     // Obviously OK
 }
 
 
 // LED ----------------------------------------------------------------------------------------------------------
+/**
+ * @brief Represents a single LED with color stages and controls.
+ * This class allows you to set the current and target color stages,
+ * move towards the target stage, and control the LED's color and brightness.
+ */
 class Led {
 // Init LED ---------------------------------------------------
 public:
@@ -98,19 +108,58 @@ public:
 private:
     Colors::Color targetColorStage;
 
-public:    
+public:
+    /**
+     * @brief Moves the LED towards the target color stage.
+     * @param speed The speed of the transition.
+     * @param MINB Minimum brightness value (default: 0).
+     * @param MAXB Maximum brightness value (default: 100).
+     * @param MINC Minimum color value (default: 0).
+     * @param MAXC Maximum color value (default: 255).
+     * @return true if the LED has reached the target stage, false otherwise.
+     * 
+     * This function adjusts the current color stage towards the target color stage
+     * by incrementing or decrementing the brightness and RGB values based on the specified speed.
+     * If the current color stage matches the target color stage, it returns true, indicating that the LED has reached the target stage.
+     */
     bool moveTowardsToTargetStage(int speed, int MINB = 0, int MAXB = 100, int MINC = 0, int MAXC = 255);
 
 // LED controls -----------------------------------------------
 public:
+    /**
+     * @brief Sets the current and target color stages to the specified color.
+     * @param color The color to set for both current and target stages.
+     */
     void setColor(Colors::Color color) { currentColorStage = color; targetColorStage = color; }
-
+    
+    /**
+     * @brief Sets the current color stage to the specified color.
+     * @param color The color to set for the current stage.
+     */
     void setCurrentColor(Colors::Color color) { currentColorStage = color; }
+
+    /**
+     * @brief Sets the brightness of the current color stage.
+     * @param brightness The brightness value to set (0-100).
+     */
     void setCurrentColorBrightness(float brightness) { currentColorStage.setBrightness(brightness); }
 
+    /**
+     * @brief Sets the target color stage to the specified color.
+     * @param color The color to set for the target stage.
+     */
     void setTargetColor(Colors::Color color) { targetColorStage = color; }
+
+    /**
+     * @brief Sets the brightness of the target color stage.
+     * @param brightness The brightness value to set (0-100).
+     */
     void setTargetColorBrightness(float brightness) { targetColorStage.setBrightness(brightness); }
 
+    /**
+     * @brief Sets the LED to the OFF state.
+     * This function sets both the current and target color stages to the OFF color.
+     */
     void setOff() { currentColorStage = Colors::Off; targetColorStage = Colors::Off; }
 };
 
@@ -125,11 +174,15 @@ enum AnimationType {
     // Extra Gadget Animations
     WIFI_CONNECTING,
     WIFI_CONNECTED,
-    WIFI_DISCONNECTED // TODO: When wifi disconnects request a /dis connection from the server, and set the led to red color
+    WIFI_DISCONNECTED
 };
 
 
 // LED Manager --------------------------------------------------------------------------------------------------
+/**
+ * @brief Manages the LED array and animations.
+ * This class provides controls for setting colors, animations, and managing the LED array.
+ */
 class LedManager {
 // Init LED manager ---------------------------------------------------
 private:
@@ -141,7 +194,6 @@ private:
     
 public:
     void setDebugColor(Colors::Color color) { debugColor = color; }
-
     void setColor(Colors::Color color) { currentColor = color; }
 
     bool moveAllLedTowardsToTargetColor(int MINB = 0, int MAXB = 100, int MINC = 0, int MAXC = 255);
@@ -154,10 +206,28 @@ private:
     uint8_t animationSpeed;
 
 public:
+    /**
+     * @brief Sets the current animation type.
+     * @param animation The animation type to set.
+     */
     void setAnimation(AnimationType animation) { currentAnimation = animation; }
-    void resetAnimation() { currentAnimation = AnimationType::NONE; lastAnimation = AnimationType::NONE; }
-    void setAnimationSpeed(uint8_t speed) { animationSpeed = speed; }
 
+    /**
+     * @brief Resets the current animation to NONE.
+     * This function sets both the current and last animations to NONE.
+     */
+    void resetAnimation() { currentAnimation = AnimationType::NONE; lastAnimation = AnimationType::NONE; }
+
+    /**
+     * @brief Sets the animation speed.
+     * @param speed The speed value to set (default: 1).
+     */
+    void setAnimationSpeed(uint8_t speed = 1) { animationSpeed = speed; }
+
+    /**
+     * @brief Gets the current animation type.
+     * @return The current animation type.
+     */
     AnimationType getCurrentAnimation() const { return currentAnimation; }
 
 // Animation sequences -----------------------------------------------
@@ -186,8 +256,18 @@ private:
     Led LED[6];
 
 public:
+    /**
+     * @brief Transmits the current waveform to the LED array.
+     * This function sends the current color stages of all LEDs to the LED array.
+     * It encodes the color data and transmits it using the RMT (Remote Control) interface.
+     */
     void transmitWaveformToLedArray();
 
+    /**
+     * @brief Starts the LED array controls task.
+     * This function creates a FreeRTOS task that continuously updates the LED array
+     * based on the current animation and color settings.
+     */
     void startLedArrayControls();
 
 // Deinit LED manager -------------------------------------------------

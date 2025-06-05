@@ -1,5 +1,5 @@
 /*
- * File: motorManager.h
+ * File: MotorManager.h
  * Project: drone_r6_fw
  * File Created: Sunday, 16th February 2025 3:53:26 pm
  * Author: MZoltan (zoltan.matus.smm@gmail.com)
